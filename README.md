@@ -1,8 +1,13 @@
-# Plantilla de Proyecto
+# Material de apoyo de la asignatura "Análisis Espacial", Maestría en Geografía, Teledetección y Ciencias de la Información Geográfica
 
-* Abre y edita el archivo [proyecto.Rmd](proyecto.Rmd).
+* [Programa](programa-analisis-espacial.md)
 
-* Consulta la sección [Proyecto](https://github.com/maestria-geotel-master/material-de-apoyo/blob/master/programa-analisis-espacial.md#proyecto) del material de apoyo de la asignatura. Allí encontrarás algunas claves para su realización.
+* [¿Cómo realizar una asignación?](ref/como-hacer-una-asignacion.md)
 
-* Si no conseguiste datos para realizar tu proyecto, revisa los archivos de ejemplo del repo [datos-para-proyectos](https://github.com/maestria-geotel-master/datos-para-proyectos). En ellos hay datos espaciales que contienente muchas variables,  con las que podrás construir un tema de proyecto y formularte preguntas de investigación.
+* [Guía mínima de RMarkdown](ref/guia-minima-de-rmarkdown.md)
 
+* [Introducción a R, *simple features* y análisis exploratorio de datos espaciales (ESDA)](ref/introduccion-a-r.md)
+
+* [Vecindad y pesos espaciales](ref/vecindad.md)
+
+* [Autocorrelación espacial: supuestos, medidas](ref/autocorrelacion.md)
