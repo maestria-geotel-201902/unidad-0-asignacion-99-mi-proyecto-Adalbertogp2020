@@ -1,0 +1,385 @@
+---
+# output: github_document
+output: 
+  pdf_document:
+    keep_tex: true
+    fig_caption: true
+    latex_engine: pdflatex
+    template: svm-latex-ms.tex
+    number_sections: true
+title:  | 
+        | Trabajo :Modelización de datos espaciales
+        | Mi proyecto :Trabajo Final de Analis Espacial 
+        | Profesor :Jose Ramon Martinez Batlle 
+author:
+- name: Adalberto Guerrero Portorreal.
+  affiliation: Estudiante, Universidad Autónoma de Santo Domingo (UASD)
+abstract: "Mi resumen"
+keywords: "delincuencia, drogas"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+geometry: margin=1in
+fontfamily: mathpazo
+fontsize: 11pt
+# spacing: double
+bibliography: bibliography.bib
+# csl: plos-one.csl
+csl: apa.csl
+header-includes:
+  \usepackage{pdflscape}
+  \newcommand{\blandscape}{\begin{landscape}}
+  \newcommand{\elandscape}{\end{landscape}}
+editor_options: 
+  chunk_output_type: console
+---
+
+# Introducción
+
+
+Los datos son, como ya sabemos, una parte imprescindible del SIG, ya que sin ellos las aplicaciones SIG y los restantes elementos que se encuentran en torno a estas no tienen utilidad alguna. Necesitamos conocer el área geográfica que estudiamos en un SIG (es decir, tener datos sobre ella), para así poder proceder a dicho estudio.
+
+No obstante, convertir esa área geográfica y la información acerca de ella en un dato susceptible de ser incorporado a un SIG no resulta una tarea sencilla. Desde los orígenes de los SIG, una de las preocupaciones principales ha sido la de representar de la mejor manera posible toda la información que podemos extraer de una zona geográfica dada, de tal modo que pueda almacenarse y analizarse en el entorno de un SIG. Este proceso de representación, que ya desde el inicio planteaba problemas a los creadores de los primeros SIG, ha sido el responsable en gran medida de la arquitectura y forma de los SIG actuales, y a él se debe en buena parte el desarrollo que han experimentado tanto los SIG en sí como las disciplinas afines.
+
+
+# Metodología para la Modelización espacial
+
+
+El objetivo de este proyecto es modelizacion de datos espaciales,Establecimiento de un modelo geográfico. Es decir, un modelo conceptual de la realidad geográfica y su comportamiento.
+Establecimiento de un modelo de representación. Es decir, una forma de recoger el anterior modelo conceptual y sus características propias, reduciéndolo a una serie finita de elementos.
+Establecimiento de un modelo de almacenamiento. Es decir, un esquema de cómo almacenar los distintos elementos del modelo de representación..
+En el presente analisis evaluaremos la autocorrelacion espacial global usaremos los criterios de shapiro wilk, Breusch-Pagan test y el I de Moran. crearemos un lineal común, utilizando la version original de la variable, analizaremos el criterio de homocedasticidad:. 
+
+
+\ldots
+## Paquetes
+
+
+* Carga el paquete `sf`, la colección `tidyverse` y los paquetes `spdep`, `lmtest`, `tmap` y `RColorBrewer`
+```{r}
+library(sf)
+library(tidyverse)
+library(spdep)
+library(lmtest)
+library(tmap)
+library(RColorBrewer)
+source('lisaclusters.R')
+```
+
+## Datos 
+
+* Exploremos la asociación de una variable de la Encuesta Nacional de viviendas por personas "vivpersgeom_sf" (`.RDS`), asignándolo al objeto `al19`. tenemos un campo mediante el cual podemos hacer un enlace con la tabla, este seria el campo ENLACE, la misma se encuentra dividida por provincias y municipios.  también usaremos la capa geométrica (`.gpkg`) asignándola al objeto `mun`, y la misma sera unida al objeto `ad19`. Ambas se encuentran en la carpeta `data`. verificaremos si hay inconsistencia en el código entre ambas fuentes.
+
+
+
+```{r}
+munad19 <- read_rds('vivpersgeom_sf.RDS')
+```
+
+
+## Transformacion de los Datos.
+
+
+```{r}
+crsdestino <- 32619
+munutm <- munad19 %>% st_transform(crs = crsdestino)
+munutm
+```
+
+
+## Selección de variables
+
+
+Para nuestro proyecto exploraremos el grado de asociación entre las diferentes variables de la tabla viviendas por perosnas y la haremos a nivel municipal como una forma de simplificar los calculos, nuestra variable dependiente sera la Categoría Ocupacional: Cesante
+
+Población total
+Categoría Ocupacional: Cesante
+Tipo de vivienda: Casa independiente
+Tipo de vivienda: Apartamento
+Sexo: Hombres
+Sexo: Mujeres
+Cantidad Cuartos tiene la vivienda: 1
+Cantidad Hogares en la vivienda: 1
+Acceso a las viviendas del segmento: Calle asfaltadas
+Acceso a las viviendas del segmento: Callejon
+Principal medio de transporte utilizado por hogares del segmento: Guagua publica
+Cual es la relacion o parentesco con la jefa o el jefe del hogar: No pariente
+
+
+## Carga de datos
+
+
+Primero hecemos las selecciones correspondinetes ,cargamos el archivo objetos_para_modelizacion.RData y las variables le atribuimos nombres cortos conservando el campo ENLACE:
+
+
+```{r}
+Magdal <- munutm %>% dplyr::select(
+  POBLACIONTOTAL = `Población total`,
+  CATEGOCUPCESANTE = `Categoría Ocupacional: Cesante`,
+  ENLACE = ENLACE,
+  TOPONIMIA = TOPONIMIA,
+  TIPOVIVIENDA = `Tipo de vivienda: Casa independiente`,
+  TIPOAARTAMENTO = `Tipo de vivienda: Apartamento`,
+  SEXOHOMBRE = `Sexo: Hombres`,
+  SEXOMUJERE = `Sexo: Mujeres`,
+  CANTIDADCUARTOS = `Cantidad Cuartos tiene la vivienda: 1`,
+  CANTIDADHOGARES = `Cantidad Hogares en la vivienda: 1`,
+  ACCESOVIVIENDA = `Acceso a las viviendas del segmento: Calle asfaltadas`,
+  ACCESOCALLEJON = `Acceso a las viviendas del segmento: Callejón`,
+  TRANSPORTEPRINCIPAL = `Principal medio de transporte utilizado por hogares del segmento: Guagua pública`,
+  PARENTESCO = `Cuál es la relación o parentesco con la jefa o el jefe del hogar: No pariente` )
+```
+
+## Vecindad por contigüidad
+
+
+```{r}
+Magdal.sp <- as_Spatial(Magdal)
+row.names(Magdal.sp) <- as.character(Magdal.sp$TOPONIMIA)
+Magdal.sp
+Magdal.nb <- poly2nb(Magdal.sp, queen=TRUE)
+summary(Magdal.nb)
+```
+
+Conversion a un objeto sf.
+
+
+```{r}
+plot(Magdal.sp, border="grey", lwd=0.5)
+plot(Magdal.nb, coordinates(Magdal.sp), add=T)
+```
+
+
+## Ponderadores espaciales
+
+
+```{r}
+Magdal.w.W <- nb2listw(Magdal.nb)
+Magdal.w.W
+Magdal.w.B <- nb2listw(Magdal.nb, style = 'B')
+Magdal.w.B
+```
+
+
+## Conversion a porcentajes
+
+
+*Con la funcion `tidyverse`, generamos una columna de porcentaje  respecto del tamaño de la muestra a nivel municipal (columna `Población total`). le Pondremos por nombre `adavariable_pct`. luego Haremos una transformada a partir de la anterior, y le pondremos el nombre `de la muestra a nivel municipal (columna `Población total`). le Pondremos por nombre `adavariable_pct_log`. El objeto `sf` resultante se asígnara a `Magdal_adavar_sf`
+
+
+```{r}
+Magdal_adavar <- Magdal %>%
+  st_centroid() %>% 
+  select(ENLACE, CATEGOCUPCESANTE, POBLACIONTOTAL) %>% 
+  mutate('PCT_CATEGOCUPCESANTE' = CATEGOCUPCESANTE/POBLACIONTOTAL*100,
+         'PCT_CATEGOCUPCESANTE_LOG' = log1p(PCT_CATEGOCUPCESANTE/POBLACIONTOTAL*100),
+         x=unlist(map(geom,1)),
+         y=unlist(map(geom,2))) %>%
+  st_drop_geometry()
+Magdal_adavar_sf <- Magdal %>%
+  inner_join(Magdal_adavar, by = 'ENLACE') %>% 
+  dplyr::select(contains('PCT_CATEGOCUPCESANTE'), x, y, ENLACE, TOPONIMIA)
+```
+
+
+## Creacion de un Mapa usando la funcion tmap.
+
+
+```{r}
+p1 <- tm_shape(Magdal_adavar_sf) +
+  tm_fill(col = "PCT_CATEGOCUPCESANTE", style = 'jenks', palette = brewer.pal(9, name = 'Reds')) +
+  tm_borders(lwd = 0.5)
+p2 <- tm_shape(Magdal_adavar_sf) +
+  tm_fill(col = "PCT_CATEGOCUPCESANTE_LOG", style = 'jenks',
+          palette = brewer.pal(9, name = 'Reds'), midpoint = NA) +
+  tm_borders(lwd = 0.5)
+tmap_arrange(p1, p2)
+```
+
+
+* Analizando el supuesto de normalidad de nuestra variable, en su versión original y en su version transformada, mediante el gráfico cuantilar normal y la prueba de *Shapiro-Wilk*.
+
+
+```{r}
+Magdal_adavar_sf %>% st_drop_geometry() %>%
+  gather(variable, valor, -(x:TOPONIMIA)) %>%
+  ggplot() + aes(sample=valor) +
+  stat_qq() + stat_qq_line() + theme_bw() +
+  theme(text = element_text(size = 14)) +
+  facet_wrap(~variable, scales = 'free')
+```
+
+
+```{r}
+Magdal_adavar_sf %>% st_drop_geometry() %>%
+  gather(variable, valor, -(x:TOPONIMIA)) %>% group_by(variable) %>%
+  summarise(prueba_normalidad=shapiro.test(valor)$p.value)
+```
+
+
+# Variable original
+
+
+```{r}
+Magdal_adavar_sf %>% lm(PCT_CATEGOCUPCESANTE~ x, .) %>% plot(3)
+Magdal_adavar_sf  %>% lm(PCT_CATEGOCUPCESANTE~ y, .) %>% plot(3)
+```
+
+
+# Prueba Breusch-Pagan
+
+
+```{r}
+Magdal_adavar_sf %>% lm(PCT_CATEGOCUPCESANTE~ x, .) %>% bptest()
+Magdal_adavar_sf %>% lm(PCT_CATEGOCUPCESANTE~ y, .) %>% bptest()
+```
+
+
+## Medidas de autocorrelación espacial
+
+I de Moran global
+
+
+```{r}
+attr(Magdal.w.W$neighbours, "region.id")
+Magdal_adavar_sf$TOPONIMIA
+match(attr(Magdal.w.W$neighbours, "region.id"), Magdal_adavar_sf$TOPONIMIA)==1:155
+```
+
+# La autocorrelación espacial global
+
+
+```{r}
+(gmoranw <- moran.test(x = Magdal_adavar_sf$`PCT_CATEGOCUPCESANTE`, listw = Magdal.w.W))
+
+```
+
+* Interpreta el resultado de la comprobación anterior aquí:
+
+
+1-Para los pesos estandarizados=el valor de *p* obtenido fue menor de 0.05, hay evidencia preliminar para rechazar la hipótesis nula de " hay autocorrelación espacial", y por lo tanto concluir que "si hay autocorrelación espacial de la variable Porcentage de personas con categoria ocupacional cesante".
+
+I de Moran local
+
+
+```{r}
+  moran.plot(x = Magdal_adavar_sf$PCT_CATEGOCUPCESANTE, listw = Magdal.w.W)
+```
+
+
+# Lisamap
+
+
+```{r}
+lisamap(objesp = Magdal_adavar_sf,
+        var = 'PCT_CATEGOCUPCESANTE',
+        pesos = Magdal.w.W,
+        tituloleyenda = 'Significancia\n("x-y", léase\ncomo "x"\nrodeado de "y"',
+        leyenda = T,
+        anchuratitulo = 50,
+        tamanotitulo = 16,
+        fuentedatos = 'ONE,2012',
+        titulomapa = paste0('Clusters LISA de respuestas a la pregunta:\n"','Porcentaje de personas en Categoría Ocupacional: Cesante', '"'))
+```
+
+
+# Interpretacion de Resultados
+
+
+1-HAY Un patrón de varias provincias coloreadas de rojo se atribuye a "efecto de contagio" importante. esto siginifica que hay autocorrelación espacial local 
+
+2-el las demas provincias se observa el gris siginifica que no hay autocorrelación espacial local
+
+3-En las demas provincias se observa el gris siginifica que no hay autocorrelación espacial local
+
+
+
+## Modelizacion
+
+
+```{r}
+POB19 <- Magdal %>% 
+  mutate_each(funs(PCT=round(./POBLACIONTOTAL,4)*100), -ENLACE, -TOPONIMIA, -geom) %>% select(matches('_PCT$'))
+```
+
+
+Modelo lineal común, utilizando la version original de la variables, analizemos el criterio de homocedasticidad:
+
+
+```{r}
+Modlin <-POB19 %>% st_drop_geometry() %>% lm(CATEGOCUPCESANTE_PCT ~ ., data = .)
+POB19 %>% summary
+Modlin %>% bptest #Breusch-Pagan test
+```
+
+Interpretacion.
+
+No es homocedastico
+
+
+## Modelo espacial autorregresivo
+
+
+```{r}
+sar <- POB19 %>% select(contains('_PCT')) %>%
+  st_drop_geometry() %>%
+  spautolm(
+    formula = CATEGOCUPCESANTE_PCT ~ .,
+    data = .,
+    listw = Magdal.w.W)
+summary(sar)
+```
+
+
+```{r}
+sar2 <- POB19 %>% select(contains('_PCT')) %>%
+  st_drop_geometry() %>%
+  spautolm(
+    formula = CATEGOCUPCESANTE_PCT ~ TRANSPORTEPRINCIPAL_PCT + TIPOAARTAMENTO_PCT ,
+    data = .,
+    listw =  Magdal.w.W)
+summary(sar2)
+```
+
+
+## Conclusiones
+
+
+De acuerdo con nuestra variable dependiente de la "Categoría Ocupacional: Cesante"
+los resultados obtenidos mediante las pruebas de autocorrelacion pudimos probar que en algunas provincias hay un patron de relleno rojo y azul de acuerdo con el mapa lisa cluster, significa que existe autocorrelación espacial global y un efecto de contagio importante en el desempleo.
+no obstante en  las demas provincias se observa el color gris siginifica que no hay autocorrelación espacial global 
+
+Continuando con el analisis de modelizacion espacial global mediante las pruebas sar.
+solo dos variables resultaron significativas con relacion a la Categoría Ocupacional: Cesante 
+
+TRANSPORTEPRINCIPAL_PCT -0.0105590  0.0058618 -1.8013  0.07165
+
+Con un valor cercano al 0.05 y en negativo  la variable "Principal medio de transporte utilizado por hogares del segmento: Guagua pública" nos indica que cuando la categoria ocupacional cesante disminuye, el transporte principal utilizado aumenta. 
+
+TIPOAARTAMENTO_PCT       0.0587764  0.0300015  1.9591  0.05010
+
+Con un valor de 0.05 y en positivo la variable "Tipo de vivienda: Apartamento" nos indica que cuando la categoria ocupacional cesante aumenta el Tipo de vivienda Apartamento disminuye
+
+
+# Discusión 
+
+Los encargados de la planificación territorial se enfrentan al problema de manejar una gran cantidad de información
+espacial que les permita cumplir su labor en forma oportuna y satisfactoria. La presente investigación plantea una metodología
+basada en la integración de la Geomática y las Técnicas de Evaluación Multicriterio (EMC) para obtener un modelo de
+capacidad de acogida que facilite la correlacion de muchas variables que estan presente en el dia a dia de nuestra sociedad especificamente para la clase de nivel Bajo. en nuestro analisis usamos  la variable original. mediante la prueva de Shapiro-Wilk,  y el I de moran pudimos establecer los criterios para cada prueba descritos mas arriba.
+
+
+\ldots
+
+# Información de soporte
+Codigos, procedimientos de la clase de Vecindad, autocorrelacion espacial y modelizacion del profesor Jose Ramon Martinez Batlle.
+
+\ldots
+
+# *Script* reproducible
+
+\ldots
+
+# Referencias
+Material de apoyo, suministrado por el profesor Jose Ramon Martinez Batlle.
+Capa de division de Provincia de La ONE. (Oficina Nacional de Estadisticas)
+Encuesta vivpersgeom 2011 de la ONE.(Oficina Nacional de Estadisticas)
+Capa de ProvCenso2010 de la ONE.(Oficina Nacional de Estadisticas)

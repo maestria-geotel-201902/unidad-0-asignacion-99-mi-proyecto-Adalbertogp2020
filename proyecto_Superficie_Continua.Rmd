@@ -1,0 +1,213 @@
+---
+# output: github_document
+output: 
+  pdf_document:
+    keep_tex: true
+    fig_caption: true
+    latex_engine: pdflatex
+    template: svm-latex-ms.tex
+    number_sections: true
+title:  | 
+        | Trabajo :Datos Puntuales Superficie Continua y Creación de Isolíneas                         en R (Mapas de Precipitación).
+        | Mi proyecto :Trabajo Final de Analis Espacial
+        | Profesor :Jose Ramon Martinez Batlle 
+author:
+- name: Adalberto Guerrero Portorreal. 
+  affiliation: Estudiante, Universidad Autónoma de Santo Domingo (UASD)
+abstract: "Mi resumen"
+keywords: "Isoyetas, pluviometros"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+geometry: margin=1in
+fontfamily: mathpazo
+fontsize: 11pt
+# spacing: double
+bibliography: bibliography.bib
+# csl: plos-one.csl
+csl: apa.csl
+header-includes:
+  \usepackage{pdflscape}
+  \newcommand{\blandscape}{\begin{landscape}}
+  \newcommand{\elandscape}{\end{landscape}}
+editor_options: 
+  chunk_output_type: console
+---
+
+# Introducción
+El presente proyecto se trata de generar una superficie continua y atraves de ella crear un mapa de isoyetas, para esto utilizaremos la capa de provincias de la OFICINA NACIONAL DE ESTADISTICA (ONE)  y los datos de lluvia de la OFICINA NACIONAL DE METEOROLOGIA (ONAMET) los datos de lluvia corresponden al año 1998, año en el cual fuimos golpeados por un fenomeno meteorologico muy fuerte qeu causo muchos daños al pais, causo inundaciones en casi en todo el territorio nacional asi como grandes areas de bosques y cutivos debastadas, debido a sus fuertes vientos. el nombre de este fenomeno es el Ciclon GEORGE. en el pais ocurrieron muchas lluvias durante casi todo el año 1998.es por esta razon nuestro interes de realizar el analisis para este tiempo.
+
+# Metodología
+Segun la orientacion del profesor jose ramon martinez batlle.
+para realizar este proyecto primero debemos generar una superficie continua usando los datos de lluvia y la capa de provincia y combinando las diferentes lineas de codigos aprendidas durante el desarrollo de esta materia.
+al final para general el mapa de isoyetas bastara con ejecutar el paquete contour data. disponible para R. y realisar algunos ajustes para la presentacion del mapa.
+
+
+
+\ldots
+
+## Paquetes
+
+* Carga el paquete `sf`, la colección `tidyverse` y los paquetes `spdep`, `lmtest`, `tmap` y `RColorBrewer`
+
+```{r}
+library(sf)
+library(tidyverse)
+library(spdep)
+library(lmtest)
+library(tmap)
+library(RColorBrewer)
+library(gstat)
+```
+
+## Cargar Datos
+
+```{r}
+rutapre <- 'material-de-apoyo-master/data/onamet_prec_anual_sf.gpkg'
+rutadiv <- 'material-de-apoyo-master/data/divisionRD.gpkg'
+pre <- st_read(rutapre)
+prov <- st_read(rutadiv, layer = 'PROVCenso2010')
+```
+
+## Transformar Datos.
+
+```{r}
+st_crs(pre)
+crsdestino <- 32619
+preutm <- pre %>% st_transform(crs = crsdestino)
+preutm
+```
+
+## EDA básico
+
+   ahora vamos a construir los datos para el año 1998:
+   
+```{r}
+nrow(preutm)
+summary(preutm$a1998)
+hist(preutm$a1998)
+hist(log(preutm$a1998))
+shapiro.test(preutm$a1998)
+shapiro.test(log(pre$a1998))
+```
+
+Segun el histograma los datos siguen distribución normal para la variable modificada, Igualmente, de los 25 pluviometros  que teniamos en el pais para le año 1998  hay dos con  datos perdidos (NA). Eliminemos dichos datos, y crearemos solo los obejtos de 1998 que tengan datos:
+
+
+```{r}
+pre1998 <- na.omit(preutm[,c('Estación', 'a1998')])
+pre1998$a1998log <- log(pre1998$a1998)
+pre1998
+```
+
+# Visualizamos los observatorios, ya depurados según la precipitación del año 1998:
+
+
+```{r}
+library(ggplot2)
+ggplot() +
+  geom_sf(data = prov, fill = 'white') +
+  geom_sf(data = pre1998, aes(col = a1998log), size = 6) +
+  scale_colour_gradient(low="#deebf7", high="#3182bd") +
+  geom_sf_text(data = prov, aes(label=TOPONIMIA), check_overlap = T, size = 2) +
+  geom_sf_text(data = pre1998, aes(label=Estación), check_overlap = T, size = 1.5) +
+  theme_bw()
+```
+
+## Variograma muestral
+   
+   Crearemos el variograma muestral para la variable modificada de la precipitación    o sea la parte logaritmica.
+   
+```{r}
+f98 <- variogram(a1998log~1, pre1998)
+f98
+plot(f98, plot.numbers = T)
+```
+
+## Variograma modelo.
+
+Después de construir el variograma muestral, vamos a construir un variograma modelo para esto utilizaremos la funcios Krige para interpolar los datos.
+      
+      
+```{r}
+f98_m <- fit.variogram(f98, vgm(model = "Sph", range = 50000))
+f98_m
+plot(f98, f98_m, plot.numbers = T)
+f98_m2 <- fit.variogram(f98, vgm(model = "Exp", range = 50000))
+f98_m2
+plot(f98, f98_m2, plot.numbers = T)
+f98_m3 <- fit.variogram(f98, vgm(model = "Gau", range = 50000))
+f98_m3
+plot(f98, f98_m3, plot.numbers = T)
+attr(f98_m, 'SSErr')
+attr(f98_m2, 'SSErr') 
+attr(f98_m3, 'SSErr')
+```
+ 
+## Interpolación por kriging ordinario
+
+Para esta interpolacion crearemos una cuadrícula con las precipitaciones.           una cuadrícula apropiada para RD,seria una de baja resolución, por ejemplo          1x1km:  
+    
+```{r}
+library(stars)
+grd <- st_bbox(prov) %>%
+  st_as_stars(dx = 1000) %>% 
+  st_set_crs(crsdestino) %>%
+  st_crop(prov)
+grd
+plot(grd)
+```
+    
+Sobre esta superficie continua la cual es parte de nuestro objetivo principal para lo que queremos lograr mas adelante , ejecutamos la interpolación por kriging       ordinario.  
+
+
+```{r}
+k <- krige(formula = a1998log~1, locations = pre1998, newdata = grd, model = f98_m2)
+k
+plot(k)
+summary(exp(as.vector(k$var1.pred)))
+```
+
+
+## Isoyetas
+
+```{r}
+plot(raster::raster('kriging.tif'))
+plot(raster::rasterToContour(exp(raster::raster('kriging.tif')), levels =seq(600,3000,100)), add=T)
+```
+
+
+# Representacion del objeto.
+
+
+```{r}
+ggplot() +
+  geom_stars(data = k, aes(fill = exp(var1.pred), x = x, y = y)) + 
+  scale_fill_gradient(low="#deebf7", high="#3182bd", trans='log1p') +
+  geom_sf(data = st_cast(prov, "MULTILINESTRING")) +
+  geom_sf(data = pre1998) +
+  geom_sf_text(data = prov, aes(label=TOPONIMIA), check_overlap = T, size = 2) +
+  theme_bw()
+```
+
+
+## Discusión o Conclusiones
+
+Mediante el procedimiento utilizado para hacer los analisis de datos puntuales y geoestadistica, aprendimos a modelisar variogramas muestrales visualizando el comportamiento de homogeneidad de los datos de precipitacion para el año 1998.
+generamos el kriging ordinario para luego obtener una superficie continua. la cual nos da la posibilidad de crear un mapa de curvas de lluvias o  mejor dicho mapa de isoyetas. al final de este proyecto pudimos  
+
+
+\ldots
+
+# Información de soporte
+Codigos, procedimientos de la clase de superficie continua del profesor Jose Ramon Martinez Batlle.
+
+\ldots
+
+# *Script* reproducible
+
+\ldots
+
+# Referencias
+Material de apoyo, suministrado por el profesor Jose Ramon Martinez Batlle.
+Capa de division de Provincia de La ONE. (Oficina Nacional de Estadisticas)
+Datos de lluvia ONAMET.(Oficina Nacional de Meteorologia)
+

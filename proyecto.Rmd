@@ -1,50 +1,55 @@
 ---
-# output: github_document
-output: 
-  pdf_document:
-    keep_tex: true
-    fig_caption: true
-    latex_engine: pdflatex
-    template: svm-latex-ms.tex
-    number_sections: true
-title: | 
-        | Mi proyecto
-        | Vecindad y autocorrelación espacial
-        | Proyecto Final de Analis Espacial
-        | Profesor :Jose Ramon Martinez Batlle 
+title: "| Autocorrelacion de la Delinciencia por Provincia,\n| Geoestadistica de la
+  \ Precipitacion del año 1998 \n| y Modelización de Datos Espaciales.\n"
 author:
-- name: Maria Magdalena Viloria y Adalberto Guerrero P.
-  affiliation: Estudiante, Universidad Autónoma de Santo Domingo (UASD)
-abstract: "Mi resumen"
-keywords: "palabra clave 1, palabra clave 2"
+- affiliation: Estudiante, Universidad Autónoma de Santo Domingo (UASD)
+  name: Adalberto Guerrero Portorreal.
 date: "`r format(Sys.time(), '%B %d, %Y')`"
-geometry: margin=1in
+output:
+  html_document:
+    df_print: paged
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+    latex_engine: pdflatex
+    number_sections: yes
+    template: svm-latex-ms.tex
+bibliography: bibliography.bib
+editor_options:
+  chunk_output_type: console
 fontfamily: mathpazo
 fontsize: 11pt
-# spacing: double
-bibliography: bibliography.bib
-# csl: plos-one.csl
-csl: apa.csl
-header-includes:
-  \usepackage{pdflscape}
-  \newcommand{\blandscape}{\begin{landscape}}
+geometry: margin=1in
+header-includes: \usepackage{pdflscape} \newcommand{\blandscape}{\begin{landscape}}
   \newcommand{\elandscape}{\end{landscape}}
+keywords: delincuencia, entretenimiento
+csl: apa.csl
+abstract: Mi resumen
 ---
+ Profesor: Jose Ramon Martinez Batlle.
+ 
+# PARTE I
 
+## Autocorrelacion de la Delinciencia por Provincia
 
-# Introducción
+### Introducción.
 
+En este tema de Vecindad y Autocorrealcion, analisaremos que tanto se correlacion las personas de los municipios con su entorno con sus vecinos mas cercanos y que tanto incide nuestra variable dependiente analizada cuanto hay contiguidad.
+podremos mirar que pasa con la dlincuencia en el pais a la falta de alternativas sana para el entretenimiento como esto puede contagia a los municipios vecinos hasta la posibilidad de convertirse en una epidemia local. a nivel espacial. evaluaremos si hay efectos de contagio o si son casos que solo se concentran en un municipo y no se extienden a los demas.
 'A que cree que se debe la delincuencia en el pais ¿A la falta de alternativas sanas (clubes, cine, teatro, etc.) para el entretenimiento?: Si'
 
-# Metodología
-El objetivo de este proyecto es el análisis exploratorio de datos espaciales, funciones de homogeneidad espacial, tipos de vecindad, ponderadores y con el índice de autocorrelación espacial de Moran.
+
+### Metodología
+
+
+En este proyecto Realizaremos el análisis exploratorio de datos espaciales, funciones de homogeneidad espacial, tipos de vecindad, ponderadores y con el índice de autocorrelación espacial de Moran.
 
 Usaremos como referencia la capa de provincias dominicanas y los resultados de la Encuesta Nacional de Hogares de Propósitos Múltiples de 2017 (ENHOGAR-2017, de. Te usaremos la pregunta de investigacion, sobre la cual sera realizado el análisis de autocorrelación al final.
 
+### *Script* reproducible
 
+### Paquetes
 
-\ldots
-## Paquetes
 
 * Carga el paquete `sf`, la colección `tidyverse` y los paquetes `spdep`, `lmtest`, `tmap` y `RColorBrewer`
 ```{r}
@@ -55,9 +60,12 @@ library(lmtest)
 library(tmap)
 library(RColorBrewer)
 ```
-## Datos y unión
 
-* Carga el conjunto de datos de "ENHOGAR 2017" (`.csv`), asignándolo al objeto `en17`. Nota que "ENHOGAR 2017" es una encuesta y, por lo tanto, recoge resultados referidos a una muestra, cuyo tamaño por provincia está recogido en la columna `muestra`. Carga también la capa geométrica (`.gpkg`) asignándola al objeto `prov`, y únelo a `en17`. Ambas fuentes se encuentran en la carpeta `data`. Recuerda el problema de la inconsistencia en el código entre ambas fuentes. Verifica consistencia luego de corregir el código (usa la práctica anterior como apoyo). Finalmente, une ambas fuentes, `prov` y `en17`.
+### Datos 
+
+* Carga el conjunto de datos de "ENHOGAR 2017" (`.csv`), asignándolo al objeto `en17`. Nota que "ENHOGAR 2017" es una encuesta y, por lo tanto, recoge resultados referidos a una muestra, cuyo tamaño por provincia está recogido en la columna `muestra`. Carga también la capa geométrica (`.gpkg`) asignándola al objeto `prov`, y se unira a `en17`. Revisaremos el problema de la inconsistencia en el código entre ambas fuentes. 
+
+
 
 ```{r}
 en17 <- read.csv('material-de-apoyo-master/data/enhogar_2017.csv', check.names = F)
@@ -66,33 +74,44 @@ en17 <- en17 %>% mutate(ENLACE = ifelse(nchar(Código)==3, paste0('0', Código),
 match(en17$ENLACE, prov$ENLACE)
 proven17 <- prov %>% inner_join(en17, by = 'ENLACE')
 ```
-* Se Imprime en pantalla el `sf` resultante y genera un mapa que muestre tu pregunta para todo el país.
-```{r}
 
+
+* Se Imprime en pantalla el `sf` resultante y genera un mapa que muestre tu pregunta para todo el país.
+
+
+```{r}
 proven17 %>%
   dplyr::select(contains('A que cree que se debe la delincuencia en el pais ¿A la falta de alternativas sanas (clubes, cine, teatro, etc.) para el entretenimiento?: Si')) %>%
   plot(breaks = 'jenks')
 ```
 
-## Conversión a `sp`
+
+### Conversión a `sp`
+
 
 * Conviertiendo el objeto `proven17` a `SpatialPolygonsDataFrame` asignándolo a `proven17.sp`, mediante la función `as_Spatial`. Este paso es necesario para crear los objetos de vecindad. Verificamos que los nombres de columnas `proven17.sp` aparecen deformados (espacios sustituidos por puntos), y lo corrígimos rescatando los nombres del objeto original `proven17`.
+
 
 ```{r}
 proven17.sp <- as_Spatial(proven17)
 colnames(proven17.sp@data)[1:20]
 colnames(proven17.sp@data) <- proven17 %>% st_drop_geometry() %>% colnames
-
 ```
 
+
 * Asignamos nombres de filas al objeto `proven17.sp` a partir de la columna `TOPONIMIA`.
+
 
 ```{r}
 row.names(proven17.sp) <- as.character(proven17.sp$TOPONIMIA)
 ```
-## Vecindad por contigüidad
+
+
+### Vecindad por Contigüidad
+
 
 * A partir de `proven17.sp`, creamos un objeto de vecindad por contigüidad, asignándolo a `proven17.nb`, usando criterio `queen`. Se Imprime en pantalla el resumen de dicho objeto de vecindad.
+
 
 ```{r}
 proven17.nb <- poly2nb(proven17.sp, queen=TRUE)
@@ -100,30 +119,44 @@ summary(proven17.nb)
 ```
 * Evalúamos la cardinalidad, es decir, cuántos vecinos tiene cada geometría/elemento (que en este caso son provincias).
 
+
 ```{r}
 card(proven17.nb)
 ```
+
+
 * Imprimimos en pantalla la relación de vecinos de cada geometría.
+
+
 ```{r}
 sapply(proven17.nb, function(x) x)
 ```
 
-* Construimos un mapa de los vínculos de vecindad (grafo). Recuerdar que primero debemos de generar un mapa de las provincias, y luego se superpondrán los vínculos.
+
+* Construimos un mapa de los vínculos de vecindad (grafo). al igual que un mapa de las provincias.
 
 
 ```{r}
 plot(proven17.sp, border="grey", lwd=0.5)
 plot(proven17.nb, coordinates(proven17.sp), add=T)
 ```
+
+
 * Evalúamos si el objeto de vecindad es simétrico.
+
+
 
 ```{r}
 is.symmetric.nb(proven17.nb)
 ```
-## Vecindad por número de vecinos
 
-* A partir de `proven17.sp`, crearemos un objeto de vecindad por número de vecinos, en el que cada geometría tenga sólo un vecino, asignándolo a `proven17.nb.k1`. Imprime en pantalla el resumen de dicho objeto de vecindad. Recuerda crear un objeto de coordenadas de centroides, que en este ejercicio se sugiere con el nombre `coords`, y otro de identidades de cada geometría, para el cual se sugiere el nombre `ident`; ambos los usarás dentro de la función `knn2nb`
-El resumen del objeto `proven17.nb.k1` debería mostrar 32 vínculos, el mismo número de regiones de `proven17.sp`, dado que cada región tiene un único vínculo.
+
+### Vecindad por Número de Vecinos
+
+
+* Despues de `proven17.sp`, crearemos un objeto de vecindad por número de vecinos, en el que cada geometría tenga sólo un vecino, asignándolo a `proven17.nb.k1`. Imprime en pantalla el resumen de dicho objeto de vecindad. Recuerda crear un objeto de coordenadas de centroides, que en este ejercicio se sugiere con el nombre `coords`, y otro de identidades de cada geometría, para el cual se sugiere el nombre `ident`; en ambos los usamos dentro de la función `knn2nb`
+El resumen del objeto `proven17.nb.k1` debe mostrar 32 vínculos, el mismo número de regiones de `proven17.sp`, 
+
 
 ```{r}
 coords <- coordinates(proven17.sp)
@@ -131,29 +164,43 @@ ident <- row.names(proven17.sp)
 proven17.nb.k1 <- knn2nb(knearneigh(coords, k = 1), row.names = ident)
 summary(proven17.nb.k1)
 ```
+
+
 * Evalúamos la cardinalidad, es decir, cuántos vecinos tiene cada geometría/elemento (que en este caso son provincias). Dado que se especificó anteriormente que sólo hubiese un único vecino, el vector debería ser una repetición de `1`.
+
 
 ```{r}
 card(proven17.nb)
 ```
-* Imprime en pantalla la relación de vecinos de cada geometría.
+
+
+* Se imprime en pantalla la relación de vecinos de cada geometría.
+
 
 ```{r}
 sapply(proven17.nb, function(x) x)
 ```
-* Hacemos un mapa de los vínculos de vecindad (grafo). Recuerdar que primero debemos generar un mapa de las provincias (primera corrida de la función `plot`), y luego le superpondrás el mapa de los vínculos (segunda corrida de `plot`, con argumento `add=T`)
+
+
+* Cosntruimos un mapa de los vínculos de vecindad (grafo). Debemos generar primero un mapa de las provincias (primera corrida de la función `plot`), y luego le superpondremos el mapa de los vínculos (segunda corrida de `plot`, con el argumento `add=T`)
+
 
 ```{r}
 plot(proven17.sp, border="grey", lwd=0.5)
 plot(proven17.nb.k1, coordinates(proven17.sp), add=T)
 ```
 
-* Evalúamos si el objeto de vecindad es simétrico 
+
+* Evalúando si el objeto de vecindad es simétrico 
+
 
 ```{r}
 is.symmetric.nb(proven17.nb)
 ```
-* Exploramos las distancias entre centroides de las geometrías a partir del objeto `proven17.nb.k1`. Para ello, creamos un objeto denominado `dist` donde se almacenan las distancias a partir de aplicar la función `nbdists` (recuerda que dentro de ésta debemos colocar el objeto `coords`). Esto Imprime en pantalla un resumen estadístico, y genera un histograma y un boxplot.
+
+
+* Etudiamos las distancias entre centro de las geometrías a partir del objeto `proven17.nb.k1`. Para esto, creamos un objeto denominado `dist` donde se almacenan las distancias a partir de aplicar la función `nbdists` (recordar colocar el objeto `coords`). Esta funcion Imprime en pantalla un resumen estadístico, y genera un histograma y un boxplot.
+
 
 ```{r}
 dist <- unlist(nbdists(proven17.nb.k1, coords))
@@ -161,7 +208,11 @@ summary(dist)
 hist(dist)
 boxplot(dist)
 ```
-* Generaremos un objeto con la distancia mínima (objeto `distmin` usando la función `min`) y otro con la máxima (objeto `distmax` usando la función `max`). Luego, se determina qué posición ocupa en el vector `dist` ocupan los valores de `distmin` de `distmax`, y asígnalas a los objetos `indicemin` y `indicemax`, respectivamente. Posteriormente, utiliza dichas posiciones (`indicemin` y `indicemax`) dentro del índice de `ident` para determinar cuál o cuáles provincias se encuentran a la menor y a la mayor distancia en el conjunto del país.
+
+
+* Generaremos un objeto con la distancia mínima (objeto `distmin` usando la función `min`) y otro con la máxima (objeto `distmax` usando la función `max`). y las asígnamos a los objetos `indicemin` y `indicemax`. Luego, utiliza dichas posiciones (`indicemin` y `indicemax`) dentro del índice de `ident` para determinar cuál o cuáles provincias se encuentran a la menor y a la mayor distancia en el conjunto del país.
+
+
 
 ```{r}
 (distmin <- min(dist)) 
@@ -171,14 +222,21 @@ ident[indicemin]
 indicemax <- which(dist==distmax)
 ident[indicemax]
 ```
+
+
 * Ordenaremos los nombres de provincias de menor a mayor distancia de separación con su vecino más próximo.
+
 
 ```{r}
 ident[order(dist)]
 ```
-## Ponderadores espaciales
 
-* Generamos dos objetos de pesos espaciales a partir del objeto de vecindad por contigüidad; uno de ellos estandarizado por filas (asígnalo a `proven17.w.W`) y otro binario (asígnalo a `proven17.w.B`)
+
+### Ponderadores Espaciales de Pesos, Estandarizados y Binarios.
+
+
+* Generamos dos objetos de pesos espaciales a partir del objeto de vecindad por contigüidad; uno de ellos estandarizado por filas (asígnalo a `proven17.w.W`) y otro binario, luego lo asignamos a `proven17.w.B`)
+
 
 ```{r}
 proven17.w.W <- nb2listw(proven17.nb)
@@ -186,11 +244,16 @@ proven17.w.W
 proven17.w.B <- nb2listw(proven17.nb, style = 'B')
 proven17.w.B
 ```
-## Autocorrelación espacial de nuestra variable
+
+
+### Autocorrelación Espacial de Nuestra Variable
+
 
 Exploramos la autocorrelación espacial de nuestra variable utilizando el *I* de Moran global y el local.
 
-* Usando `tidyverse`, generamos una columna de porcentaje de personas que respondió a nuestra pregunta respecto del tamaño de la muestra a nivel provincial (columna `muestra`). le Pondremos por nombre `mivariable_pct`. Generamos una transformada a partir de la anterior, y le pondremos el nombre `mivariable_pct_log`. El objeto `sf` resultante se asígnara a `proven17_mivar_sf`
+
+*Con la funcion `tidyverse`, generamos una columna de porcentaje de personas que respondió a nuestra pregunta, respecto del tamaño de la muestra a nivel provincial (columna `muestra`). le Pondremos por nombre `mivariable_pct`. luego Haremos una transformada a partir de la anterior, y le pondremos el nombre `mivariable_pct_log`. El objeto `sf` resultante se asígnara a `proven17_mivar_sf`
+
 
 
 ```{r}
@@ -209,7 +272,10 @@ proven17_mivar_sf <- proven17 %>%
   dplyr::select(muestra, contains('mivariable'), x, y, ENLACE, TOPONIMIA)
 ```
 
+
+
 * Hacemos un mapa que muestre la variable, tanto en su versión original como transformada.
+
 
 ```{r pctfueramaps}
 p1 <- tm_shape(proven17_mivar_sf) +
@@ -222,11 +288,10 @@ p2 <- tm_shape(proven17_mivar_sf) +
   tm_borders(lwd = 0.5) 
 tmap_arrange(p1, p2)
 ```
-* Compruebamos el supuesto de normalidad de nuestra variable, tanto en su versión original como transformada, mediante el gráfico cuantilar normal y la prueba de *Shapiro-Wilk*.
 
->Tip: Como argumento de las funciones a continuación, usa la forma vectorial de tu variable original y transformada; e.g.proven17_mivar_sf$mivariable_pct_log
 
->Tip: Si los puntos del gráfico cuantilar normal siguen una línea recta, y la prueba de Shapiro-Wilk resulta no significativa (es decir, el valor de *p* mayor que 0.05), entonces se asume como válido el supuesto de normalidad.
+* Comprobamos el supuesto de normalidad de nuestra variable, tanto en su versión original como transformada, mediante el gráfico cuantilar normal y la prueba de *Shapiro-Wilk*.
+
 
 ```{r}
 qqnorm(proven17_mivar_sf$mivariable_pct) #Versión original de la variable
@@ -234,15 +299,21 @@ shapiro.test(proven17_mivar_sf$mivariable_pct) #Versión original de la variable
 qqnorm(proven17_mivar_sf$mivariable_pct_log) #Versión transformada de la variable (log)
 shapiro.test(proven17_mivar_sf$mivariable_pct_log) #Versión transformada de la variable (log)
 ```
-# Resultados
+
+
+### Resultados
+
+
 * Interpreta el resultado de la comprobación anterior aquí:
 
-#1-para la variable original=prueba de Shapiro-Wilk resulta  significativa (es decir, el valor de *p* menor que 0.05), entonces se asume como no válido el supuesto de normalidad.
-#2-para la variable modificada=prueba de Shaprio-Wilk resulta no significativa (es decir, el valor de *p*mayor que 0.05), entonces se asume como  válido el supuesto de normalidad.
+1-Para la variable original=prueba de Shapiro-Wilk resulta  significativa (es decir, el valor de *p* menor que 0.05), entonces se asume como no válido el supuesto de normalidad.
+
+
+2-Para la variable modificada=prueba de Shaprio-Wilk resulta no significativa (es decir, el valor de *p*mayor que 0.05), entonces se asume como  válido el supuesto de normalidad.
+
 
 * Comprobamos el supuesto de homocedasticidad de tu variable respecto de `x` e `y`, tanto en su versión original como en la transformada, mediante la prueba de *Breusch-Pagan*.
 
->Tip: Si el valor de *p* es menor que 0.05 (nivel de significancia convencional, aunque arbitrario), existe evidencia para rechazar la hipótesis de homocedasticidad.
 
 ```{r}
 proven17_mivar_sf %>% lm(mivariable_pct ~ x, .) %>% bptest()
@@ -250,35 +321,46 @@ proven17_mivar_sf %>% lm(mivariable_pct ~ y, .) %>% bptest()
 proven17_mivar_sf %>% lm(mivariable_pct_log ~ x, .) %>% bptest()
 proven17_mivar_sf %>% lm(mivariable_pct_log ~ y, .) %>% bptest()
 ```
+
+
 * Interpreta el resultado de la comprobación anterior aquí:
-#1-para la variable original=el valor de *p* es mayor que 0.05 (nivel de significancia no convencional, aunque arbitrario), no existe evidencia para rechazar la hipótesis de homocedasticidad.
-#2-para la variable modificada=el valor de *p* es mayor que 0.05 (nivel de significancia no convencional, aunque arbitrario), no existe evidencia para rechazar la hipótesis de homocedasticidad.
+
+1-Para la variable original=el valor de *p* es mayor que 0.05 (nivel de significancia no convencional, aunque arbitrario), no existe evidencia para rechazar la hipótesis de homocedasticidad.
+
+2-Para la variable modificada=el valor de *p* es mayor que 0.05 (nivel de significancia no convencional, aunque arbitrario), no existe evidencia para rechazar la hipótesis de homocedasticidad.
 
 En la eventualidad de que el supuesto normalidad y el de homocedasticidad no se cumplan, continúa con el procedimiento de estimar la autocorrelación la versión original o la transformada de tu variable, según elijas, aun cuando los resultados del análisis de autocorrelación espacial podrían no ser fiables.
 
-# Autocorrelación espacial global
 
-* Comprobamos primero que existe consistencia en la secuencia de los nombres del objeto de vecindad y el *sf*.
+### Autocorrelación Espacial Global
+
+
+* Comprobacion de la consistencia en la secuencia de los nombres del objeto de vecindad y el *sf*.
+
 
 ```{r}
 match(attr(proven17.w.W$neighbours, "region.id"), proven17_mivar_sf$TOPONIMIA)==1:32
 ```
 
+
 * Aplicamos la prueba de autocorrelación espacial global para el *I* de Moran, usando los pesos estandarizados por filas como los binarios.
+
 
 ```{r}
 (gmoranw <- moran.test(x = proven17_mivar_sf$mivariable_pct_log, listw = proven17.w.W))
 (gmoranb <- moran.test(x = proven17_mivar_sf$mivariable_pct_log, listw = proven17.w.B))
 ```
+
+
 * Interpreta el resultado de la comprobación anterior aquí:
 
-#1-para los pesos estandarizados=el valor de *p* obtenido fue menor de 0.05, hay evidencia preliminar para rechazar la hipótesis nula de "no hay autocorrelación espacial", y por lo tanto concluir que "si hay autocorrelación espacial"
+1-Para los pesos estandarizados=el valor de *p* obtenido fue menor de 0.05, hay evidencia preliminar para rechazar la hipótesis nula de "no hay autocorrelación espacial", y por lo tanto concluir que "si hay autocorrelación espacial"
 
-#2-para los pesos binarios=el valor de *p* obtenido fue menor de 0.05, hay evidencia preliminar para rechazar la hipótesis nula de "no hay autocorrelación espacial", y por lo tanto concluir que "si hay autocorrelación espacial"
+2-Para los pesos binarios=el valor de *p* obtenido fue menor de 0.05, hay evidencia preliminar para rechazar la hipótesis nula de "no hay autocorrelación espacial", y por lo tanto concluir que "si hay autocorrelación espacial"
 
->Tip: Si el valor de *p* obtenido fue menor de 0.05, hay evidencia preliminar para rechazar la hipótesis nula de "no hay autocorrelación espacial", y por lo tanto concluir que "sí hay autocorrelación espacial". En cualquier caso, es necesario que continúes evaluando la autocorrelación a nivel local en el siguiente paso, con independencia del resultado obtenido en la prueba global.
 
 * Evalúamos la autocorrelación espacial local. Realizamos el diagrama de dispersión de Moran (*Moran scatterplot*), mediante la función `moran.plot`. Posteriormente, cargamos el script `lisaclusters.R`, y ejecutamos la función `lisamap` a nuestros datos para generar el mapa LISA. En la función `lisamap`, debemos introducir los siguientes argumentos: `objesp`, que es el objeto espacial denominado `proven17_mivar_sf`; `pesos`, que es el objeto de pesos, que será `proven17.w.W`.
+
 
 ```{r}
 moran.plot(x = proven17_mivar_sf$mivariable_pct_log, listw = proven17.w.W)
@@ -293,35 +375,566 @@ lisamap(objesp = proven17_mivar_sf,
         fuentedatos = 'ENHOGAR 2017',
         titulomapa = paste0('Clusters LISA de respuestas a la pregunta:\n"', mivariable, '"'))
 ```
-* Interpreta el resultado anterior aquí: 
-
-#1-HAY un patron de relleno rojo y azul significa que existe autocorrelación local
-#2-HAY Un patrón de varias provincias coloreadas de rojo se atribuye a "efecto de contagio" importante. esto siginifica que hay autocorrelación espacial local
-#3-el las demas provincias se observa el gris siginifica que no hay autocorrelación espacial local
-
->Tip: Si existe relleno rojo o azul, o ambos, significa que existe autocorrelación local. El relleno rojo (*hotspots*) significa que los valores altos del grupo coloreado son parecidos entre sí. Un patrón de varias provincias coloreadas de rojo se atribuye a "efecto de contagio" importante. Si sólo una provincia aparece en rojo, significa que las provincias de su entorno tienen valores parecidos, pero éstas últimas a su vez no tienen valores significativamente parecidos con su entorno ulterior (no se produce "contagio"). El relleno azul (*coldspots*) se interpreta de la misma manera que en el caso anterior, pero con los valores en este caso son bajos. Si sólo aparecen rellenos grises, significa que no hay autocorrelación local, y las provincias entonces presentan un patrón aleatorio de la variable analizada.
-
->A modo de verificación, los mapas LISA de todas las variables asignadas se transcriben a continuación. Nota que, de las variables asignadas, algunas no presentan autocorrelación espacial local.
 
 
-# Discusión o Conclusiones
+* Interpretacion de los resultados obtenidos atraves del moran plot: 
+
+1-Hay un patron de relleno rojo y azul significa que existe autocorrelación local
+
+2-Hay Un patrón de varias provincias coloreadas de rojo se atribuye a "efecto de contagio" importante. esto siginifica que hay autocorrelación espacial local
+
+3-En las demas provincias se observa el gris siginifica que no hay autocorrelación espacial local
+
+
+### Discusión o Conclusiones
+
+
 Atraves de este procedimientos pudimos verificar que la delicuencia en el pais se puede contagiar a varias provincias vecinas y que influye mucho  en el crecimiento de la delincuencia la faltas de alternativas sanas como son clubes, cine , teatro etc. para el entretenimiento. atraves de la ejecucion del codigo pudimos darmos cuenta que el mismo tenia una distribucion normal en la variable modificada. mediante la prueva de Shapiro-Wilk, Breusch-Pagan y I de moran pudimos establecer los criterios para cada prueba descritos mas arriba. tambien pudimos demostrar que existe autocorrelacion espacial local y efecto de contagio importante.
 
 
-
 \ldots
 
-# Información de soporte
+### Información de Soporte
 Codigos, procedimientos de la clase de Vecindad y autocorrelacion espacial del profesor Jose Ramon Martinez Batlle.
 
-\ldots
-
-# *Script* reproducible
 
 \ldots
 
-# Referencias
+
+### Referencias
 Material de apoyo, suministrado por el profesor Jose Ramon Martinez Batlle.
 Capa de division de Provincia de La ONE. (Oficina Nacional de Estadisticas)
 Encuesta En hogar de la ONE.(Oficina Nacional de Estadisticas)
 Capa de ProvCenso2010 de la ONE.(Oficina Nacional de Estadisticas)
+
+
+# PARTE II
+
+## Datos Puntuales Superficie Continua y Creación de Isolíneas                         en R (Mapas de Precipitación).
+
+### Introducción.
+
+El presente proyecto se trata de generar una superficie continua y atraves de ella crear un mapa de isoyetas, para esto utilizaremos la capa de provincias de la OFICINA NACIONAL DE ESTADISTICA (ONE)  y los datos de lluvia de la OFICINA NACIONAL DE METEOROLOGIA (ONAMET) los datos de lluvia corresponden al año 1998, año en el cual fuimos golpeados por un fenomeno meteorologico muy fuerte qeu causo muchos daños al pais, causo inundaciones en casi en todo el territorio nacional asi como grandes areas de bosques y cutivos debastadas, debido a sus fuertes vientos. el nombre de este fenomeno es el Ciclon GEORGE. en el pais ocurrieron muchas lluvias durante casi todo el año 1998.es por esta razon nuestro interes de realizar el analisis para este tiempo.
+
+### Metodología
+
+Segun la orientacion del profesor jose ramon martinez batlle.
+para realizar este proyecto primero debemos generar una superficie continua usando los datos de lluvia y la capa de provincia y combinando las diferentes lineas de codigos aprendidas durante el desarrollo de esta materia.
+al final para general el mapa de isoyetas bastara con ejecutar el paquete contour data. disponible para R. y realisar algunos ajustes para la presentacion del mapa.
+
+
+
+\ldots
+
+### *Script* reproducible
+
+### Paquetes
+
+* Como ya cargamos los paquetes  `sf`, la colección `tidyverse` y los paquetes `spdep`, `lmtest`, `tmap` y `RColorBrewer` en la primera parte de este proyecto, solo queda cargar el paquete `gstat`.
+
+```{r}
+library(gstat)
+```
+
+### Cargar Datos
+
+```{r}
+rutapre <- 'material-de-apoyo-master/data/onamet_prec_anual_sf.gpkg'
+rutadiv <- 'material-de-apoyo-master/data/divisionRD.gpkg'
+pre <- st_read(rutapre)
+prov <- st_read(rutadiv, layer = 'PROVCenso2010')
+```
+
+### Transformar Datos.
+
+```{r}
+st_crs(pre)
+crsdestino <- 32619
+preutm <- pre %>% st_transform(crs = crsdestino)
+preutm
+```
+
+### EDA Básico
+
+   ahora vamos a construir los datos para el año 1998:
+   
+```{r}
+nrow(preutm)
+summary(preutm$a1998)
+hist(preutm$a1998)
+hist(log(preutm$a1998))
+shapiro.test(preutm$a1998)
+shapiro.test(log(pre$a1998))
+```
+
+Segun el histograma los datos siguen distribución normal para la variable modificada, Igualmente, de los 25 pluviometros  que teniamos en el pais para le año 1998  hay dos con  datos perdidos (NA). Eliminemos dichos datos, y crearemos solo los obejtos de 1998 que tengan datos:
+
+
+```{r}
+pre1998 <- na.omit(preutm[,c('Estación', 'a1998')])
+pre1998$a1998log <- log(pre1998$a1998)
+pre1998
+```
+
+### Visualizamos los Observatorios, ya Depurados Según la Precipitación del año 1998:
+
+
+```{r}
+library(ggplot2)
+ggplot() +
+  geom_sf(data = prov, fill = 'white') +
+  geom_sf(data = pre1998, aes(col = a1998log), size = 6) +
+  scale_colour_gradient(low="#deebf7", high="#3182bd") +
+  geom_sf_text(data = prov, aes(label=TOPONIMIA), check_overlap = T, size = 2) +
+  geom_sf_text(data = pre1998, aes(label=Estación), check_overlap = T, size = 1.5) +
+  theme_bw()
+```
+
+### Variograma Muestral
+   
+   Crearemos el variograma muestral para la variable modificada de la precipitación    o sea la parte logaritmica.
+   
+```{r}
+f98 <- variogram(a1998log~1, pre1998)
+f98
+plot(f98, plot.numbers = T)
+```
+
+### Variograma Modelo.
+
+Después de construir el variograma muestral, vamos a construir un variograma modelo para esto utilizaremos la funcios Krige para interpolar los datos.
+      
+      
+```{r}
+f98_m <- fit.variogram(f98, vgm(model = "Sph", range = 50000))
+f98_m
+plot(f98, f98_m, plot.numbers = T)
+f98_m2 <- fit.variogram(f98, vgm(model = "Exp", range = 50000))
+f98_m2
+plot(f98, f98_m2, plot.numbers = T)
+f98_m3 <- fit.variogram(f98, vgm(model = "Gau", range = 50000))
+f98_m3
+plot(f98, f98_m3, plot.numbers = T)
+attr(f98_m, 'SSErr')
+attr(f98_m2, 'SSErr') 
+attr(f98_m3, 'SSErr')
+```
+ 
+### Interpolación por Kriging Ordinario
+
+Para esta interpolacion crearemos una cuadrícula con las precipitaciones.           una cuadrícula apropiada para RD,seria una de baja resolución, por ejemplo          1x1km:  
+    
+```{r}
+library(stars)
+grd <- st_bbox(prov) %>%
+  st_as_stars(dx = 1000) %>% 
+  st_set_crs(crsdestino) %>%
+  st_crop(prov)
+grd
+plot(grd)
+```
+    
+Sobre esta superficie continua la cual es parte de nuestro objetivo principal para lo que queremos lograr mas adelante , ejecutamos la interpolación por kriging       ordinario.  
+
+
+```{r}
+k <- krige(formula = a1998log~1, locations = pre1998, newdata = grd, model = f98_m2)
+k
+plot(k)
+summary(exp(as.vector(k$var1.pred)))
+```
+
+
+### Isoyetas
+
+```{r}
+plot(raster::raster('kriging.tif'))
+plot(raster::rasterToContour(exp(raster::raster('kriging.tif')), levels =seq(600,3000,100)), add=T)
+```
+
+
+### Representacion del Objeto.
+
+
+```{r}
+ggplot() +
+  geom_stars(data = k, aes(fill = exp(var1.pred), x = x, y = y)) + 
+  scale_fill_gradient(low="#deebf7", high="#3182bd", trans='log1p') +
+  geom_sf(data = st_cast(prov, "MULTILINESTRING")) +
+  geom_sf(data = pre1998) +
+  geom_sf_text(data = prov, aes(label=TOPONIMIA), check_overlap = T, size = 2) +
+  theme_bw()
+```
+
+
+### Discusión o Conclusiones
+
+Mediante el procedimiento utilizado para hacer los analisis de datos puntuales y geoestadistica, aprendimos a modelisar variogramas muestrales visualizando el comportamiento de homogeneidad de los datos de precipitacion para el año 1998.
+generamos el kriging ordinario para luego obtener una superficie continua. la cual nos da la posibilidad de crear un mapa de curvas de lluvias o  mejor dicho mapa de isoyetas. al final de este proyecto pudimos  
+
+
+### Información de Soporte
+
+Codigos, procedimientos de la clase de superficie continua del profesor Jose Ramon Martinez Batlle.
+
+
+\ldots
+
+### Referencias
+Material de apoyo, suministrado por el profesor Jose Ramon Martinez Batlle.
+Capa de division de Provincia de La ONE. (Oficina Nacional de Estadisticas)
+Datos de lluvia ONAMET.(Oficina Nacional de Meteorologia)
+
+# PARTE III 
+
+## Modelización de Datos Espaciales.
+
+
+### Introducción.
+
+
+Los datos son, como ya sabemos, una parte imprescindible del SIG, ya que sin ellos las aplicaciones SIG y los restantes elementos que se encuentran en torno a estas no tienen utilidad alguna. Necesitamos conocer el área geográfica que estudiamos en un SIG (es decir, tener datos sobre ella), para así poder proceder a dicho estudio.
+
+No obstante, convertir esa área geográfica y la información acerca de ella en un dato susceptible de ser incorporado a un SIG no resulta una tarea sencilla. Desde los orígenes de los SIG, una de las preocupaciones principales ha sido la de representar de la mejor manera posible toda la información que podemos extraer de una zona geográfica dada, de tal modo que pueda almacenarse y analizarse en el entorno de un SIG. Este proceso de representación, que ya desde el inicio planteaba problemas a los creadores de los primeros SIG, ha sido el responsable en gran medida de la arquitectura y forma de los SIG actuales, y a él se debe en buena parte el desarrollo que han experimentado tanto los SIG en sí como las disciplinas afines.
+
+
+### Metodología para la Modelización Espacial
+
+
+El objetivo de este proyecto es modelizacion de datos espaciales,Establecimiento de un modelo geográfico. Es decir, un modelo conceptual de la realidad geográfica y su comportamiento.
+Establecimiento de un modelo de representación. Es decir, una forma de recoger el anterior modelo conceptual y sus características propias, reduciéndolo a una serie finita de elementos.
+Establecimiento de un modelo de almacenamiento. Es decir, un esquema de cómo almacenar los distintos elementos del modelo de representación..
+En el presente analisis evaluaremos la autocorrelacion espacial global usaremos los criterios de shapiro wilk, Breusch-Pagan test y el I de Moran. crearemos un lineal común, utilizando la version original de la variable, analizaremos el criterio de homocedasticidad.
+
+### *Script* reproducible
+
+### Paquetes
+
+
+* Como ya cargamos los paquetes  `sf`, la colección `tidyverse` y los paquetes `spdep`, `lmtest`, `tmap` y `RColorBrewer` en la primera parte de este proyecto, solo queda cargar el paquete `lisacluster.R`
+
+
+```{r}
+source('lisaclusters.R')
+```
+
+### Datos 
+
+* Exploremos la asociación de una variable de la Encuesta Nacional de viviendas por personas "vivpersgeom_sf" (`.RDS`), asignándolo al objeto `al19`. tenemos un campo mediante el cual podemos hacer un enlace con la tabla, este seria el campo ENLACE, la misma se encuentra dividida por provincias y municipios.  también usaremos la capa geométrica (`.gpkg`) asignándola al objeto `mun`, y la misma sera unida al objeto `ad19`. Ambas se encuentran en la carpeta `data`. verificaremos si hay inconsistencia en el código entre ambas fuentes. 
+
+
+
+```{r}
+setwd("~/unidad-0-asignacion-99-mi-proyecto-Adalbertogp2020/material-de-apoyo-master/data")
+munad19 <- readRDS('vivpersgeom_sf.RDS')
+```
+
+
+### Transformacion de los Datos.
+
+
+```{r}
+crsdestino <- 32619
+munutm <- munad19 %>% st_transform(crs = crsdestino)
+munutm
+```
+
+
+### Selección de Variables
+
+
+Para nuestro proyecto exploraremos el grado de asociación entre las diferentes variables de la tabla viviendas por perosnas y la haremos a nivel municipal como una forma de simplificar los calculos, nuestra variable dependiente sera la Categoría Ocupacional: Cesante
+
+Población total
+Categoría Ocupacional: Cesante
+Tipo de vivienda: Casa independiente
+Tipo de vivienda: Apartamento
+Sexo: Hombres
+Sexo: Mujeres
+Cantidad Cuartos tiene la vivienda: 1
+Cantidad Hogares en la vivienda: 1
+Acceso a las viviendas del segmento: Calle asfaltadas
+Acceso a las viviendas del segmento: Callejon
+Principal medio de transporte utilizado por hogares del segmento: Guagua publica
+Cual es la relacion o parentesco con la jefa o el jefe del hogar: No pariente
+
+
+### Carga de Datos
+
+
+Primero hecemos las selecciones correspondinetes ,cargamos el archivo objetos_para_modelizacion.RData y las variables le atribuimos nombres cortos conservando el campo ENLACE:
+
+
+```{r}
+Magdal <- munutm %>% dplyr::select(
+  POBLACIONTOTAL = `Población total`,
+  CATEGOCUPCESANTE = `Categoría Ocupacional: Cesante`,
+  ENLACE = ENLACE,
+  TOPONIMIA = TOPONIMIA,
+  TIPOVIVIENDA = `Tipo de vivienda: Casa independiente`,
+  TIPOAARTAMENTO = `Tipo de vivienda: Apartamento`,
+  SEXOHOMBRE = `Sexo: Hombres`,
+  SEXOMUJERE = `Sexo: Mujeres`,
+  CANTIDADCUARTOS = `Cantidad Cuartos tiene la vivienda: 1`,
+  CANTIDADHOGARES = `Cantidad Hogares en la vivienda: 1`,
+  ACCESOVIVIENDA = `Acceso a las viviendas del segmento: Calle asfaltadas`,
+  ACCESOCALLEJON = `Acceso a las viviendas del segmento: Callejón`,
+  TRANSPORTEPRINCIPAL = `Principal medio de transporte utilizado por hogares del segmento: Guagua pública`,
+  PARENTESCO = `Cuál es la relación o parentesco con la jefa o el jefe del hogar: No pariente` )
+```
+
+### Vecindad por Contigüidad
+
+
+```{r}
+Magdal.sp <- as_Spatial(Magdal)
+row.names(Magdal.sp) <- as.character(Magdal.sp$TOPONIMIA)
+Magdal.sp
+Magdal.nb <- poly2nb(Magdal.sp, queen=TRUE)
+summary(Magdal.nb)
+```
+
+Conversion a un objeto sf.
+
+
+```{r}
+plot(Magdal.sp, border="grey", lwd=0.5)
+plot(Magdal.nb, coordinates(Magdal.sp), add=T)
+```
+
+
+### Ponderadores Espaciales
+
+
+```{r}
+Magdal.w.W <- nb2listw(Magdal.nb)
+Magdal.w.W
+Magdal.w.B <- nb2listw(Magdal.nb, style = 'B')
+Magdal.w.B
+```
+
+
+### Conversion a Porcentajes
+
+
+*Con la funcion `tidyverse`, generamos una columna de porcentaje  respecto del tamaño de la muestra a nivel municipal (columna `Población total`). le Pondremos por nombre `adavariable_pct`. luego Haremos una transformada a partir de la anterior, y le pondremos el nombre `de la muestra a nivel municipal (columna `Población total`). le Pondremos por nombre `adavariable_pct_log`. El objeto `sf` resultante se asígnara a `Magdal_adavar_sf`
+
+
+```{r}
+Magdal_adavar <- Magdal %>%
+  st_centroid() %>% 
+  select(ENLACE, CATEGOCUPCESANTE, POBLACIONTOTAL) %>% 
+  mutate('PCT_CATEGOCUPCESANTE' = CATEGOCUPCESANTE/POBLACIONTOTAL*100,
+         'PCT_CATEGOCUPCESANTE_LOG' = log1p(PCT_CATEGOCUPCESANTE/POBLACIONTOTAL*100),
+         x=unlist(map(geom,1)),
+         y=unlist(map(geom,2))) %>%
+  st_drop_geometry()
+Magdal_adavar_sf <- Magdal %>%
+  inner_join(Magdal_adavar, by = 'ENLACE') %>% 
+  dplyr::select(contains('PCT_CATEGOCUPCESANTE'), x, y, ENLACE, TOPONIMIA)
+```
+
+### Creacion de un Mapa usando la Funcion tmap.
+
+
+```{r}
+p1 <- tm_shape(Magdal_adavar_sf) +
+  tm_fill(col = "PCT_CATEGOCUPCESANTE", style = 'jenks', palette = brewer.pal(9, name = 'Reds')) +
+  tm_borders(lwd = 0.5)
+p2 <- tm_shape(Magdal_adavar_sf) +
+  tm_fill(col = "PCT_CATEGOCUPCESANTE_LOG", style = 'jenks',
+          palette = brewer.pal(9, name = 'Reds'), midpoint = NA) +
+  tm_borders(lwd = 0.5)
+tmap_arrange(p1, p2)
+```
+
+
+* Analizando el supuesto de normalidad de nuestra variable, en su versión original y en su version transformada, mediante el gráfico cuantilar normal y la prueba de *Shapiro-Wilk*.
+
+
+```{r}
+Magdal_adavar_sf %>% st_drop_geometry() %>%
+  gather(variable, valor, -(x:TOPONIMIA)) %>%
+  ggplot() + aes(sample=valor) +
+  stat_qq() + stat_qq_line() + theme_bw() +
+  theme(text = element_text(size = 14)) +
+  facet_wrap(~variable, scales = 'free')
+```
+
+
+```{r}
+Magdal_adavar_sf %>% st_drop_geometry() %>%
+  gather(variable, valor, -(x:TOPONIMIA)) %>% group_by(variable) %>%
+  summarise(prueba_normalidad=shapiro.test(valor)$p.value)
+```
+
+
+### Variable Original
+
+
+```{r}
+Magdal_adavar_sf %>% lm(PCT_CATEGOCUPCESANTE~ x, .) %>% plot(3)
+Magdal_adavar_sf  %>% lm(PCT_CATEGOCUPCESANTE~ y, .) %>% plot(3)
+```
+
+
+### Prueba Breusch-Pagan
+
+
+```{r}
+Magdal_adavar_sf %>% lm(PCT_CATEGOCUPCESANTE~ x, .) %>% bptest()
+Magdal_adavar_sf %>% lm(PCT_CATEGOCUPCESANTE~ y, .) %>% bptest()
+```
+
+
+### Medidas de Autocorrelación Espacial
+
+I de Moran global
+
+
+```{r}
+attr(Magdal.w.W$neighbours, "region.id")
+Magdal_adavar_sf$TOPONIMIA
+match(attr(Magdal.w.W$neighbours, "region.id"), Magdal_adavar_sf$TOPONIMIA)==1:155
+```
+
+### La Autocorrelación Espacial Global
+
+
+```{r}
+(gmoranw <- moran.test(x = Magdal_adavar_sf$`PCT_CATEGOCUPCESANTE`, listw = Magdal.w.W))
+
+```
+
+* Interpreta el resultado de la comprobación anterior aquí:
+
+
+1-Para los pesos estandarizados=el valor de *p* obtenido fue menor de 0.05, hay evidencia preliminar para rechazar la hipótesis nula de " hay autocorrelación espacial", y por lo tanto concluir que "si hay autocorrelación espacial de la variable Porcentage de personas con categoria ocupacional cesante".
+
+I de Moran local
+
+
+```{r}
+  moran.plot(x = Magdal_adavar_sf$PCT_CATEGOCUPCESANTE, listw = Magdal.w.W)
+```
+
+
+### Lisamap
+
+
+```{r}
+lisamap(objesp = Magdal_adavar_sf,
+        var = 'PCT_CATEGOCUPCESANTE',
+        pesos = Magdal.w.W,
+        tituloleyenda = 'Significancia\n("x-y", léase\ncomo "x"\nrodeado de "y"',
+        leyenda = T,
+        anchuratitulo = 50,
+        tamanotitulo = 16,
+        fuentedatos = 'ONE,2012',
+        titulomapa = paste0('Clusters LISA de respuestas a la pregunta:\n"','Porcentaje de personas en Categoría Ocupacional: Cesante', '"'))
+```
+
+
+### Interpretacion de Resultados
+
+
+1-HAY Un patrón de varias provincias coloreadas de rojo se atribuye a "efecto de contagio" importante. esto siginifica que hay autocorrelación espacial local 
+
+2-el las demas provincias se observa el gris siginifica que no hay autocorrelación espacial local
+
+3-En las demas provincias se observa el gris siginifica que no hay autocorrelación espacial local
+
+
+
+### Modelizacion
+
+
+```{r}
+POB19 <- Magdal %>% 
+  mutate_each(funs(PCT=round(./POBLACIONTOTAL,4)*100), -ENLACE, -TOPONIMIA, -geom) %>% select(matches('_PCT$'))
+```
+
+
+Modelo lineal común, utilizando la version original de la variables, analizemos el criterio de homocedasticidad:
+
+
+```{r}
+Modlin <-POB19 %>% st_drop_geometry() %>% lm(CATEGOCUPCESANTE_PCT ~ ., data = .)
+POB19 %>% summary
+Modlin %>% bptest #Breusch-Pagan test
+```
+
+Interpretacion.
+
+No es homocedastico
+
+
+### Modelo Espacial Autorregresivo
+
+
+```{r}
+sar <- POB19 %>% select(contains('_PCT')) %>%
+  st_drop_geometry() %>%
+  spautolm(
+    formula = CATEGOCUPCESANTE_PCT ~ .,
+    data = .,
+    listw = Magdal.w.W)
+summary(sar)
+```
+
+
+```{r}
+sar2 <- POB19 %>% select(contains('_PCT')) %>%
+  st_drop_geometry() %>%
+  spautolm(
+    formula = CATEGOCUPCESANTE_PCT ~ TRANSPORTEPRINCIPAL_PCT + TIPOAARTAMENTO_PCT ,
+    data = .,
+    listw =  Magdal.w.W)
+summary(sar2)
+```
+
+
+### Conclusiones
+
+
+De acuerdo con nuestra variable dependiente de la "Categoría Ocupacional: Cesante"
+los resultados obtenidos mediante las pruebas de autocorrelacion pudimos probar que en algunas provincias hay un patron de relleno rojo y azul de acuerdo con el mapa lisa cluster, significa que existe autocorrelación espacial global y un efecto de contagio importante en el desempleo.
+no obstante en  las demas provincias se observa el color gris siginifica que no hay autocorrelación espacial global 
+
+Continuando con el analisis de modelizacion espacial global mediante las pruebas sar.
+solo dos variables resultaron significativas con relacion a la Categoría Ocupacional: Cesante 
+
+TRANSPORTEPRINCIPAL_PCT -0.0105590  0.0058618 -1.8013  0.07165
+
+Con un valor cercano al 0.05 y en negativo  la variable "Principal medio de transporte utilizado por hogares del segmento: Guagua pública" nos indica que cuando la categoria ocupacional cesante disminuye, el transporte principal utilizado aumenta. 
+
+TIPOAARTAMENTO_PCT       0.0587764  0.0300015  1.9591  0.05010
+
+Con un valor de 0.05 y en positivo la variable "Tipo de vivienda: Apartamento" nos indica que cuando la categoria ocupacional cesante aumenta el Tipo de vivienda Apartamento disminuye
+
+
+### Discusión 
+
+Los encargados de la planificación territorial se enfrentan al problema de manejar una gran cantidad de información
+espacial que les permita cumplir su labor en forma oportuna y satisfactoria. La presente investigación plantea una metodología
+basada en la integración de la Geomática y las Técnicas de Evaluación Multicriterio (EMC) para obtener un modelo de
+capacidad de acogida que facilite la correlacion de muchas variables que estan presente en el dia a dia de nuestra sociedad especificamente para la clase de nivel Bajo. en nuestro analisis usamos  la variable original. mediante la prueva de Shapiro-Wilk,  y el I de moran pudimos establecer los criterios para cada prueba descritos mas arriba.
+
+
+\ldots
+
+### Información de Soporte
+Codigos, procedimientos de la clase de Vecindad, autocorrelacion espacial y modelizacion del profesor Jose Ramon Martinez Batlle.
+
+
+\ldots
+
+### Referencias
+
+Material de apoyo, suministrado por el profesor Jose Ramon Martinez Batlle.
+Capa de division de Provincia de La ONE. (Oficina Nacional de Estadisticas)
+Encuesta vivpersgeom 2011 de la ONE.(Oficina Nacional de Estadisticas)
+Capa de ProvCenso2010 de la ONE.(Oficina Nacional de Estadisticas).
+
+
+

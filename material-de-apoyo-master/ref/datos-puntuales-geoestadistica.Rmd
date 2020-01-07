@@ -203,7 +203,7 @@ attr(v79_m3, 'SSErr')
 
 ### Interpolación por kriging ordinario
 
-Antes de realizar la interpolación, necesitamos una cuadrícula que "llenaremos" con las predcciones. Creemos una cuadrícula para RD, en este caso, de baja resolución, 10x10km:
+Antes de realizar la interpolación, necesitamos una cuadrícula que "llenaremos" con las prediciones. Creemos una cuadrícula para RD, en este caso, de baja resolución, 10x10km:
 
 ```{r grd, out.width=800}
 library(stars)
